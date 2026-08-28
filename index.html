@@ -102,6 +102,9 @@
     </div>
 
     <script>
+        // URL Apps Script Anda
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwxdjkDI2Hn074D7ZpOc2e06H_u2CLKtbuj1t2_GXsszAMSLhvK503SiFxZY6u6XHLoyw/exec'; 
+
         // Inisialisasi Data dari LocalStorage
         let dataWarga = JSON.parse(localStorage.getItem('jimpitan_warga')) || [];
         let dataTransaksi = JSON.parse(localStorage.getItem('jimpitan_transaksi')) || [];
@@ -147,13 +150,11 @@
             
             const btnSubmit = e.target.querySelector('button');
             const originalText = btnSubmit.innerText;
-            btnSubmit.innerText = 'Menyimpan ke Spreadsheet...';
+            btnSubmit.innerText = 'Menyimpan...';
             btnSubmit.disabled = true;
 
             const wargaId = document.getElementById('select-warga').value;
             const nominal = parseInt(document.getElementById('input-nominal').value);
-            
-            const namaWarga = dataWarga.find(w => w.id === wargaId)?.nama;
             
             if (!wargaId) {
                 btnSubmit.innerText = originalText;
@@ -161,9 +162,11 @@
                 return alert('Pilih warga terlebih dahulu!');
             }
 
+            const namaWarga = dataWarga.find(w => w.id === wargaId)?.nama;
             const waktu = getWaktuSekarang();
             const idTransaksi = Date.now().toString();
 
+            // Format data untuk Spreadsheet
             const payload = {
                 id_transaksi: idTransaksi,
                 waktu: waktu,
@@ -172,17 +175,14 @@
             };
 
             try {
-                // MASUKKAN URL APPS SCRIPT ANDA DI SINI
-                const scriptURL = 'https://script.google.com/macros/s/AKfycbwxdjkDI2Hn074D7ZpOc2e06H_u2CLKtbuj1t2_GXsszAMSLhvK503SiFxZY6u6XHLoyw/exec';
-                
-                await fetch(scriptURL, {
+                // Kirim ke Google Sheets
+                await fetch(SCRIPT_URL, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'text/plain;charset=utf-8',
-                    },
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify(payload)
                 });
 
+                // Simpan ke Local Storage untuk UI Dashboard
                 const transaksi = {
                     id: idTransaksi,
                     wargaId: wargaId,
@@ -195,12 +195,12 @@
                 localStorage.setItem('jimpitan_transaksi', JSON.stringify(dataTransaksi));
                 
                 document.getElementById('input-nominal').value = '';
-                alert('Iuran berhasil dicatat dan masuk ke Spreadsheet!');
+                alert('Iuran berhasil dicatat ke Spreadsheet!');
                 switchTab('dashboard');
                 
             } catch (error) {
-                console.error('Error!', error.message);
-                alert('Gagal menyimpan ke Spreadsheet. Pastikan koneksi internet Anda aktif.');
+                console.error('Error!', error);
+                alert('Gagal mengirim ke Spreadsheet! Pastikan akses "Siapa Saja (Anyone)" sudah aktif di Apps Script.');
             } finally {
                 btnSubmit.innerText = originalText;
                 btnSubmit.disabled = false;
@@ -209,7 +209,7 @@
 
         // Hapus Warga
         function hapusWarga(id) {
-            if(confirm('Yakin ingin menghapus warga ini?')) {
+            if(confirm('Yakin ingin menghapus warga ini? Data transaksi yang lama akan tetap bernama ID saja.')) {
                 dataWarga = dataWarga.filter(w => w.id !== id);
                 localStorage.setItem('jimpitan_warga', JSON.stringify(dataWarga));
                 updateUI();
@@ -232,7 +232,7 @@
 
                 wargaList.innerHTML += `
                     <li class="py-3 flex justify-between items-center">
-                        <span class="font-medium">${w.nama}</span>
+                        <span class="font-medium text-gray-700">${w.nama}</span>
                         <button onclick="hapusWarga('${w.id}')" class="text-red-500 text-sm hover:underline">Hapus</button>
                     </li>
                 `;
@@ -274,7 +274,7 @@
                 const namaWarga = dataWarga.find(w => w.id === t.wargaId)?.nama || 'Warga Terhapus';
                 riwayatList.innerHTML += `
                     <div class="bg-white border-l-4 border-teal-500 p-3 rounded shadow-sm">
-                        <div class="flex justify-between">
+                        <div class="flex justify-between items-center">
                             <span class="font-bold text-gray-800">${namaWarga}</span>
                             <span class="font-bold text-green-600">+${formatRupiah(t.nominal)}</span>
                         </div>
@@ -288,7 +288,7 @@
             }
         }
 
-        // Inisialisasi awal
+        // Inisialisasi awal UI saat load pertama kali
         updateUI();
     </script>
 </body>
