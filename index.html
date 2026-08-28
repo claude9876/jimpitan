@@ -55,7 +55,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Nominal (Rp)</label>
-                        <input type="number" id="input-nominal" required class="w-full border border-gray-300 rounded-md p-2 focus:ring-teal-500 focus:border-teal-500" placeholder="Contoh: 5000">
+                        <input type="number" id="input-nominal" required min="1" step="1" class="w-full border border-gray-300 rounded-md p-2 focus:ring-teal-500 focus:border-teal-500" placeholder="Contoh: 5000">
                     </div>
                     <button type="submit" class="w-full bg-teal-600 text-white font-bold py-2 px-4 rounded-md hover:bg-teal-700 transition">Simpan Iuran</button>
                 </form>
@@ -91,19 +91,19 @@
 
         <!-- Bottom Navigation -->
         <nav class="bg-white border-t border-gray-200 fixed bottom-0 w-full max-w-md flex justify-around p-2 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] z-20">
-            <button onclick="switchTab('dashboard')" class="nav-btn text-teal-600 flex flex-col items-center p-2 w-1/4">
+            <button data-tab="dashboard" onclick="switchTab('dashboard')" class="nav-btn text-teal-600 flex flex-col items-center p-2 w-1/4">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
                 <span class="text-[10px] mt-1">Dashboard</span>
             </button>
-            <button onclick="switchTab('input')" class="nav-btn text-gray-400 hover:text-teal-600 flex flex-col items-center p-2 w-1/4">
+            <button data-tab="input" onclick="switchTab('input')" class="nav-btn text-gray-400 hover:text-teal-600 flex flex-col items-center p-2 w-1/4">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                 <span class="text-[10px] mt-1">Input</span>
             </button>
-            <button onclick="switchTab('riwayat')" class="nav-btn text-gray-400 hover:text-teal-600 flex flex-col items-center p-2 w-1/4">
+            <button data-tab="riwayat" onclick="switchTab('riwayat')" class="nav-btn text-gray-400 hover:text-teal-600 flex flex-col items-center p-2 w-1/4">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 <span class="text-[10px] mt-1">Riwayat</span>
             </button>
-            <button onclick="switchTab('warga')" class="nav-btn text-gray-400 hover:text-teal-600 flex flex-col items-center p-2 w-1/4">
+            <button data-tab="warga" onclick="switchTab('warga')" class="nav-btn text-gray-400 hover:text-teal-600 flex flex-col items-center p-2 w-1/4">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                 <span class="text-[10px] mt-1">Warga</span>
             </button>
@@ -111,12 +111,21 @@
     </div>
 
     <script>
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwxdjkDI2Hn074D7ZpOc2e06H_u2CLKtbuj1t2_GXsszAMSLhvK503SiFxZY6u6XHLoyw/exec'; 
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwxdjkDI2Hn074D7ZpOc2e06H_u2CLKtbuj1t2_GXsszAMSLhvK503SiFxZY6u6XHLoyw/exec';
 
-        let dataWarga = JSON.parse(localStorage.getItem('jimpitan_warga')) || [];
-        let dataTransaksi = JSON.parse(localStorage.getItem('jimpitan_transaksi')) || [];
+        // Data disimpan di memori dan dimuat/disimpan lewat window.storage (lihat catatan di bawah).
+        let dataWarga = [];
+        let dataTransaksi = [];
 
-        const formatRupiah = (angka) => 'Rp ' + Number(angka).toLocaleString('id-ID');
+        const formatRupiah = (angka) => 'Rp ' + Number(angka || 0).toLocaleString('id-ID');
+
+        // Mencegah nama warga / data dari Google Sheets merusak tampilan (HTML injection).
+        const escapeHtml = (str) => String(str ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
 
         const getWaktuSekarang = () => {
             const now = new Date();
@@ -126,34 +135,62 @@
             return `${hari}, ${tanggal} - ${jam} WIB`;
         };
 
+        // --- Penyimpanan lokal (persisten antar sesi) ---
+        // Catatan: data ini dibagikan (shared) ke siapa pun yang membuka artifact ini,
+        // sama seperti data di Google Sheets yang juga sudah bersifat bersama.
+        async function getStored(key) {
+            try {
+                const result = await window.storage.get(key, true);
+                return result && result.value ? JSON.parse(result.value) : null;
+            } catch (err) {
+                // Key belum pernah dibuat, atau storage tidak tersedia — anggap kosong.
+                return null;
+            }
+        }
+
+        async function setStored(key, value) {
+            try {
+                await window.storage.set(key, JSON.stringify(value), true);
+            } catch (err) {
+                console.error(`Gagal menyimpan data "${key}":`, err);
+            }
+        }
+
         // Fungsi Membaca / Menarik Data dari Google Sheets
         async function sinkronData() {
             const syncStatus = document.getElementById('sync-status');
             const iconSync = document.getElementById('icon-sync');
-            
+
             syncStatus.innerText = 'Memuat data...';
             iconSync.classList.add('animate-spin');
 
             try {
                 const response = await fetch(SCRIPT_URL);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const dataFromSheet = await response.json();
 
                 if (Array.isArray(dataFromSheet)) {
                     dataTransaksi = dataFromSheet;
-                    localStorage.setItem('jimpitan_transaksi', JSON.stringify(dataTransaksi));
-                    
+                    await setStored('jimpitan_transaksi', dataTransaksi);
+
                     // Otomatis tambahkan nama warga baru ke list jika belum ada di dataWarga
+                    let adaWargaBaru = false;
                     dataFromSheet.forEach(item => {
                         if (item.nama_warga && !dataWarga.some(w => w.nama.toLowerCase() === item.nama_warga.toLowerCase())) {
                             dataWarga.push({ id: Date.now().toString() + Math.random(), nama: item.nama_warga });
+                            adaWargaBaru = true;
                         }
                     });
-                    localStorage.setItem('jimpitan_warga', JSON.stringify(dataWarga));
+                    if (adaWargaBaru) {
+                        await setStored('jimpitan_warga', dataWarga);
+                    }
 
                     syncStatus.innerText = 'Tersinkronasi';
+                } else {
+                    syncStatus.innerText = 'Format data tidak sesuai';
                 }
             } catch (error) {
-                console.error("Gagal sinkronisasi data:", error);
+                console.error('Gagal sinkronisasi data:', error);
                 syncStatus.innerText = 'Gagal Sync (Offline)';
             } finally {
                 iconSync.classList.remove('animate-spin');
@@ -163,43 +200,68 @@
 
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('text-teal-600'));
-            document.querySelectorAll('.nav-btn').forEach(el => el.classList.add('text-gray-400'));
-            
-            document.getElementById(`tab-${tabId}`).classList.add('active');
-            event.currentTarget.classList.remove('text-gray-400');
-            event.currentTarget.classList.add('text-teal-600');
+            document.querySelectorAll('.nav-btn').forEach(el => {
+                el.classList.remove('text-teal-600');
+                el.classList.add('text-gray-400');
+            });
+
+            const targetTab = document.getElementById(`tab-${tabId}`);
+            if (targetTab) targetTab.classList.add('active');
+
+            // Cari tombol nav lewat atribut data-tab, bukan lewat `event` global,
+            // supaya tetap benar walau switchTab dipanggil dari kode (bukan klik langsung).
+            const targetBtn = document.querySelector(`.nav-btn[data-tab="${tabId}"]`);
+            if (targetBtn) {
+                targetBtn.classList.remove('text-gray-400');
+                targetBtn.classList.add('text-teal-600');
+            }
 
             updateUI();
         }
 
         // Tambah Warga
-        document.getElementById('form-warga').addEventListener('submit', (e) => {
+        document.getElementById('form-warga').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const nama = document.getElementById('input-nama-warga').value;
+            const inputEl = document.getElementById('input-nama-warga');
+            const nama = inputEl.value.trim();
+            if (!nama) return;
+
+            const sudahAda = dataWarga.some(w => w.nama.toLowerCase() === nama.toLowerCase());
+            if (sudahAda) {
+                alert('Nama warga tersebut sudah ada di daftar!');
+                return;
+            }
+
             dataWarga.push({ id: Date.now().toString(), nama });
-            localStorage.setItem('jimpitan_warga', JSON.stringify(dataWarga));
-            document.getElementById('input-nama-warga').value = '';
+            await setStored('jimpitan_warga', dataWarga);
+            inputEl.value = '';
             updateUI();
             alert('Warga berhasil ditambahkan!');
         });
 
         // Input Iuran & Kirim ke Google Sheets
-        document.getElementById('form-iuran').addEventListener('submit', function(e) {
+        document.getElementById('form-iuran').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
+
             const btnSubmit = e.target.querySelector('button');
             const originalText = btnSubmit.innerText;
             btnSubmit.innerText = 'Menyimpan...';
             btnSubmit.disabled = true;
 
             const wargaId = document.getElementById('select-warga').value;
-            const nominal = parseInt(document.getElementById('input-nominal').value);
-            
+            const nominalInput = document.getElementById('input-nominal');
+            const nominal = parseInt(nominalInput.value, 10);
+
             if (!wargaId) {
                 btnSubmit.innerText = originalText;
                 btnSubmit.disabled = false;
                 return alert('Pilih warga terlebih dahulu!');
+            }
+
+            if (!Number.isFinite(nominal) || nominal <= 0) {
+                btnSubmit.innerText = originalText;
+                btnSubmit.disabled = false;
+                return alert('Masukkan nominal yang valid (lebih dari 0)!');
             }
 
             const namaWarga = dataWarga.find(w => w.id === wargaId)?.nama;
@@ -213,32 +275,36 @@
                 nominal: nominal
             };
 
-            // Kirim ke Google Sheets
-            fetch(SCRIPT_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify(payload)
-            }).then(() => {
-                setTimeout(sinkronData, 1000); // Sinkronkan ulang data setelah 1 detik
-            });
-
-            // Update UI Lokal langsung
+            // Update UI & simpan lokal langsung, baru kirim ke Google Sheets di belakang layar
             dataTransaksi.push(payload);
-            localStorage.setItem('jimpitan_transaksi', JSON.stringify(dataTransaksi));
-            
-            document.getElementById('input-nominal').value = '';
-            alert('Iuran berhasil dicatat ke Spreadsheet!');
+            await setStored('jimpitan_transaksi', dataTransaksi);
+
+            try {
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload)
+                });
+                setTimeout(sinkronData, 1000); // Sinkronkan ulang data setelah 1 detik
+            } catch (error) {
+                console.error('Gagal mengirim data ke server:', error);
+                // Data tetap tersimpan secara lokal walau pengiriman ke Sheets gagal.
+            }
+
+            nominalInput.value = '';
+            document.getElementById('select-warga').value = '';
+            alert('Iuran berhasil dicatat!');
             switchTab('dashboard');
-            
+
             btnSubmit.innerText = originalText;
             btnSubmit.disabled = false;
         });
 
-        function hapusWarga(id) {
-            if(confirm('Yakin ingin menghapus warga dari opsi pilihan?')) {
+        async function hapusWarga(id) {
+            if (confirm('Yakin ingin menghapus warga dari opsi pilihan?')) {
                 dataWarga = dataWarga.filter(w => w.id !== id);
-                localStorage.setItem('jimpitan_warga', JSON.stringify(dataWarga));
+                await setStored('jimpitan_warga', dataWarga);
                 updateUI();
             }
         }
@@ -247,6 +313,7 @@
             // Update Select Option & List Warga
             const selectWarga = document.getElementById('select-warga');
             const wargaList = document.getElementById('warga-list');
+            const nilaiTerpilih = selectWarga.value;
             selectWarga.innerHTML = '<option value="">-- Pilih Warga --</option>';
             wargaList.innerHTML = '';
 
@@ -258,22 +325,27 @@
 
                 wargaList.innerHTML += `
                     <li class="py-3 flex justify-between items-center">
-                        <span class="font-medium text-gray-700">${w.nama}</span>
+                        <span class="font-medium text-gray-700">${escapeHtml(w.nama)}</span>
                         <button onclick="hapusWarga('${w.id}')" class="text-red-500 text-sm hover:underline">Hapus</button>
                     </li>
                 `;
             });
+            selectWarga.value = nilaiTerpilih; // pertahankan pilihan jika masih ada
 
             // Update Dashboard (Rekap)
             const dashboardList = document.getElementById('dashboard-list');
             dashboardList.innerHTML = '';
             let totalKas = 0;
 
+            if (dataWarga.length === 0) {
+                dashboardList.innerHTML = '<p class="text-center text-sm text-gray-400 mt-4">Belum ada data warga</p>';
+            }
+
             dataWarga.forEach(w => {
                 const totalSetoranWarga = dataTransaksi
                     .filter(t => (t.nama_warga || '').toLowerCase() === w.nama.toLowerCase())
                     .reduce((sum, current) => sum + Number(current.nominal || 0), 0);
-                
+
                 totalKas += totalSetoranWarga;
 
                 dashboardList.innerHTML += `
@@ -282,7 +354,7 @@
                             <div class="bg-teal-100 p-2 rounded-full text-teal-600">
                                 <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
                             </div>
-                            <span class="font-semibold text-gray-700">${w.nama}</span>
+                            <span class="font-semibold text-gray-700">${escapeHtml(w.nama)}</span>
                         </div>
                         <span class="font-bold text-teal-600">${formatRupiah(totalSetoranWarga)}</span>
                     </div>
@@ -293,28 +365,35 @@
             // Update Riwayat Transaksi (Dibalik agar yang terbaru di atas)
             const riwayatList = document.getElementById('riwayat-list');
             riwayatList.innerHTML = '';
-            
+
             const sortedTransaksi = [...dataTransaksi].reverse();
-            
+
             sortedTransaksi.forEach(t => {
                 riwayatList.innerHTML += `
                     <div class="bg-white border-l-4 border-teal-500 p-3 rounded shadow-sm">
                         <div class="flex justify-between items-center">
-                            <span class="font-bold text-gray-800">${t.nama_warga || 'Warga'}</span>
+                            <span class="font-bold text-gray-800">${escapeHtml(t.nama_warga || 'Warga')}</span>
                             <span class="font-bold text-green-600">+${formatRupiah(t.nominal)}</span>
                         </div>
-                        <p class="text-xs text-gray-500 mt-1">${t.waktu}</p>
+                        <p class="text-xs text-gray-500 mt-1">${escapeHtml(t.waktu)}</p>
                     </div>
                 `;
             });
 
-            if(sortedTransaksi.length === 0) {
+            if (sortedTransaksi.length === 0) {
                 riwayatList.innerHTML = '<p class="text-center text-sm text-gray-400 mt-4">Belum ada transaksi</p>';
             }
         }
 
-        // Sinkronkan data saat aplikasi pertama kali dibuka
-        sinkronData();
+        // Muat data tersimpan, tampilkan, lalu sinkronkan dengan Google Sheets saat aplikasi dibuka
+        async function initApp() {
+            dataWarga = (await getStored('jimpitan_warga')) || [];
+            dataTransaksi = (await getStored('jimpitan_transaksi')) || [];
+            updateUI();
+            await sinkronData();
+        }
+
+        initApp();
     </script>
 </body>
 </html>
