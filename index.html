@@ -165,11 +165,15 @@
             iconSync.classList.add('animate-spin');
 
             try {
-                const response = await fetch(SCRIPT_URL);
+                // cache: 'no-store' mencegah browser memakai respons GET lama yang ter-cache,
+                // yang bisa membuat baris yang sudah dihapus di Sheet tetap muncul di aplikasi.
+                const response = await fetch(SCRIPT_URL, { cache: 'no-store' });
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const dataFromSheet = await response.json();
 
                 if (Array.isArray(dataFromSheet)) {
+                    // Sheet adalah sumber data utama: array lama diganti total (bukan digabung),
+                    // jadi baris yang dihapus di Sheet otomatis ikut hilang di sini.
                     dataTransaksi = dataFromSheet;
                     await setStored('jimpitan_transaksi', dataTransaksi);
 
@@ -191,7 +195,10 @@
                 }
             } catch (error) {
                 console.error('Gagal sinkronisasi data:', error);
-                syncStatus.innerText = 'Gagal Sync (Offline)';
+                // Kemungkinan besar karena deployment Apps Script belum diatur akses "Siapa saja",
+                // atau ada masalah CORS — jadi data lama (termasuk yang sudah dihapus di Sheet)
+                // masih tampil sampai sync berhasil.
+                syncStatus.innerText = 'Gagal Sync - cek akses deployment';
             } finally {
                 iconSync.classList.remove('animate-spin');
                 updateUI();
