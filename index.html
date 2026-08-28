@@ -14,9 +14,15 @@
 
     <div class="max-w-md mx-auto bg-white min-h-screen shadow-lg relative pb-20">
         <!-- Header -->
-        <header class="bg-teal-600 text-white p-4 sticky top-0 z-10 shadow-md">
-            <h1 class="text-xl font-bold text-center">Jimpitan Warga RT02</h1>
-            <p class="text-xs text-center font-light">Dukuh Kepuh</p>
+        <header class="bg-teal-600 text-white p-4 sticky top-0 z-10 shadow-md flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-bold">Jimpitan Warga RT02</h1>
+                <p class="text-xs font-light">Dukuh Kepuh</p>
+            </div>
+            <button onclick="sinkronData()" class="bg-teal-700 text-white text-xs px-3 py-1.5 rounded-full hover:bg-teal-800 transition flex items-center gap-1 shadow-sm">
+                <svg id="icon-sync" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                <span>Sync Data</span>
+            </button>
         </header>
 
         <!-- Main Content -->
@@ -24,7 +30,10 @@
             
             <!-- TAB 1: Dashboard (Rekap) -->
             <div id="tab-dashboard" class="tab-content active">
-                <h2 class="text-lg font-bold mb-4 border-b pb-2">Dashboard Setoran</h2>
+                <div class="flex justify-between items-center mb-4 border-b pb-2">
+                    <h2 class="text-lg font-bold">Dashboard Setoran</h2>
+                    <span id="sync-status" class="text-[10px] text-gray-400">Sinkronisasi...</span>
+                </div>
                 <div class="bg-teal-100 p-4 rounded-lg mb-4 text-center shadow-sm">
                     <p class="text-sm text-teal-700">Total Kas Terkumpul</p>
                     <h3 id="total-kas" class="text-2xl font-bold text-teal-900">Rp 0</h3>
@@ -54,7 +63,7 @@
 
             <!-- TAB 3: Riwayat -->
             <div id="tab-riwayat" class="tab-content">
-                <h2 class="text-lg font-bold mb-4 border-b pb-2">Riwayat Transaksi</h2>
+                <h2 class="text-lg font-bold mb-4 border-b pb-2">Riwayat Transaksi (Google Sheets)</h2>
                 <div id="riwayat-list" class="space-y-3">
                     <!-- Riwayat akan muncul di sini -->
                 </div>
@@ -102,16 +111,13 @@
     </div>
 
     <script>
-        // URL Apps Script Anda
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwxdjkDI2Hn074D7ZpOc2e06H_u2CLKtbuj1t2_GXsszAMSLhvK503SiFxZY6u6XHLoyw/exec'; 
 
-        // Inisialisasi Data dari LocalStorage
         let dataWarga = JSON.parse(localStorage.getItem('jimpitan_warga')) || [];
         let dataTransaksi = JSON.parse(localStorage.getItem('jimpitan_transaksi')) || [];
 
         const formatRupiah = (angka) => 'Rp ' + Number(angka).toLocaleString('id-ID');
 
-        // Fungsi Mendapatkan Waktu Lengkap (Hari, Tanggal, Jam)
         const getWaktuSekarang = () => {
             const now = new Date();
             const hari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][now.getDay()];
@@ -120,7 +126,41 @@
             return `${hari}, ${tanggal} - ${jam} WIB`;
         };
 
-        // Navigasi Tab
+        // Fungsi Membaca / Menarik Data dari Google Sheets
+        async function sinkronData() {
+            const syncStatus = document.getElementById('sync-status');
+            const iconSync = document.getElementById('icon-sync');
+            
+            syncStatus.innerText = 'Memuat data...';
+            iconSync.classList.add('animate-spin');
+
+            try {
+                const response = await fetch(SCRIPT_URL);
+                const dataFromSheet = await response.json();
+
+                if (Array.isArray(dataFromSheet)) {
+                    dataTransaksi = dataFromSheet;
+                    localStorage.setItem('jimpitan_transaksi', JSON.stringify(dataTransaksi));
+                    
+                    // Otomatis tambahkan nama warga baru ke list jika belum ada di dataWarga
+                    dataFromSheet.forEach(item => {
+                        if (item.nama_warga && !dataWarga.some(w => w.nama.toLowerCase() === item.nama_warga.toLowerCase())) {
+                            dataWarga.push({ id: Date.now().toString() + Math.random(), nama: item.nama_warga });
+                        }
+                    });
+                    localStorage.setItem('jimpitan_warga', JSON.stringify(dataWarga));
+
+                    syncStatus.innerText = 'Tersinkronasi';
+                }
+            } catch (error) {
+                console.error("Gagal sinkronisasi data:", error);
+                syncStatus.innerText = 'Gagal Sync (Offline)';
+            } finally {
+                iconSync.classList.remove('animate-spin');
+                updateUI();
+            }
+        }
+
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('text-teal-600'));
@@ -166,7 +206,6 @@
             const waktu = getWaktuSekarang();
             const idTransaksi = Date.now().toString();
 
-            // Format data untuk Spreadsheet
             const payload = {
                 id_transaksi: idTransaksi,
                 waktu: waktu,
@@ -174,50 +213,36 @@
                 nominal: nominal
             };
 
-            // 1. Kirim ke Google Sheets di latar belakang
+            // Kirim ke Google Sheets
             fetch(SCRIPT_URL, {
                 method: 'POST',
                 mode: 'no-cors',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify(payload)
             }).then(() => {
-                console.log("Data berhasil dikirim ke Spreadsheet.");
-            }).catch((error) => {
-                // Error CORS diabaikan karena data nyatanya tetap masuk ke Sheet
-                console.warn("Peringatan CORS (Aman diabaikan):", error);
+                setTimeout(sinkronData, 1000); // Sinkronkan ulang data setelah 1 detik
             });
 
-            // 2. Langsung simpan ke Local Storage untuk UI Dashboard tanpa menunggu fetch selesai
-            const transaksi = {
-                id: idTransaksi,
-                wargaId: wargaId,
-                nominal: nominal,
-                waktu: waktu,
-                timestamp: Date.now()
-            };
-
-            dataTransaksi.push(transaksi);
+            // Update UI Lokal langsung
+            dataTransaksi.push(payload);
             localStorage.setItem('jimpitan_transaksi', JSON.stringify(dataTransaksi));
             
-            // 3. Reset form dan kembalikan ke dashboard
             document.getElementById('input-nominal').value = '';
-            alert('Iuran berhasil dicatat ke Dashboard & Spreadsheet!');
+            alert('Iuran berhasil dicatat ke Spreadsheet!');
             switchTab('dashboard');
             
             btnSubmit.innerText = originalText;
             btnSubmit.disabled = false;
         });
 
-        // Hapus Warga
         function hapusWarga(id) {
-            if(confirm('Yakin ingin menghapus warga ini? Data transaksi yang lama akan tetap bernama ID saja.')) {
+            if(confirm('Yakin ingin menghapus warga dari opsi pilihan?')) {
                 dataWarga = dataWarga.filter(w => w.id !== id);
                 localStorage.setItem('jimpitan_warga', JSON.stringify(dataWarga));
                 updateUI();
             }
         }
 
-        // Update Semua Tampilan
         function updateUI() {
             // Update Select Option & List Warga
             const selectWarga = document.getElementById('select-warga');
@@ -246,8 +271,8 @@
 
             dataWarga.forEach(w => {
                 const totalSetoranWarga = dataTransaksi
-                    .filter(t => t.wargaId === w.id)
-                    .reduce((sum, current) => sum + current.nominal, 0);
+                    .filter(t => (t.nama_warga || '').toLowerCase() === w.nama.toLowerCase())
+                    .reduce((sum, current) => sum + Number(current.nominal || 0), 0);
                 
                 totalKas += totalSetoranWarga;
 
@@ -265,18 +290,17 @@
             });
             document.getElementById('total-kas').textContent = formatRupiah(totalKas);
 
-            // Update Riwayat Transaksi
+            // Update Riwayat Transaksi (Dibalik agar yang terbaru di atas)
             const riwayatList = document.getElementById('riwayat-list');
             riwayatList.innerHTML = '';
             
-            const sortedTransaksi = [...dataTransaksi].sort((a, b) => b.timestamp - a.timestamp);
+            const sortedTransaksi = [...dataTransaksi].reverse();
             
             sortedTransaksi.forEach(t => {
-                const namaWarga = dataWarga.find(w => w.id === t.wargaId)?.nama || 'Warga Terhapus';
                 riwayatList.innerHTML += `
                     <div class="bg-white border-l-4 border-teal-500 p-3 rounded shadow-sm">
                         <div class="flex justify-between items-center">
-                            <span class="font-bold text-gray-800">${namaWarga}</span>
+                            <span class="font-bold text-gray-800">${t.nama_warga || 'Warga'}</span>
                             <span class="font-bold text-green-600">+${formatRupiah(t.nominal)}</span>
                         </div>
                         <p class="text-xs text-gray-500 mt-1">${t.waktu}</p>
@@ -289,8 +313,8 @@
             }
         }
 
-        // Inisialisasi awal UI saat load pertama kali
-        updateUI();
+        // Sinkronkan data saat aplikasi pertama kali dibuka
+        sinkronData();
     </script>
 </body>
 </html>
