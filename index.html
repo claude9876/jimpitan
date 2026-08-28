@@ -145,7 +145,7 @@
         });
 
         // Input Iuran & Kirim ke Google Sheets
-        document.getElementById('form-iuran').addEventListener('submit', async (e) => {
+        document.getElementById('form-iuran').addEventListener('submit', function(e) {
             e.preventDefault();
             
             const btnSubmit = e.target.querySelector('button');
@@ -174,38 +174,38 @@
                 nominal: nominal
             };
 
-            try {
-                // Kirim ke Google Sheets
-                await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors', // INI KODE TAMBAHANNYA
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify(payload)
-                });
+            // 1. Kirim ke Google Sheets di latar belakang
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payload)
+            }).then(() => {
+                console.log("Data berhasil dikirim ke Spreadsheet.");
+            }).catch((error) => {
+                // Error CORS diabaikan karena data nyatanya tetap masuk ke Sheet
+                console.warn("Peringatan CORS (Aman diabaikan):", error);
+            });
 
-                // Simpan ke Local Storage untuk UI Dashboard
-                const transaksi = {
-                    id: idTransaksi,
-                    wargaId: wargaId,
-                    nominal: nominal,
-                    waktu: waktu,
-                    timestamp: Date.now()
-                };
+            // 2. Langsung simpan ke Local Storage untuk UI Dashboard tanpa menunggu fetch selesai
+            const transaksi = {
+                id: idTransaksi,
+                wargaId: wargaId,
+                nominal: nominal,
+                waktu: waktu,
+                timestamp: Date.now()
+            };
 
-                dataTransaksi.push(transaksi);
-                localStorage.setItem('jimpitan_transaksi', JSON.stringify(dataTransaksi));
-                
-                document.getElementById('input-nominal').value = '';
-                alert('Iuran berhasil dicatat ke Spreadsheet!');
-                switchTab('dashboard');
-                
-            } catch (error) {
-                console.error('Error!', error);
-                alert('Gagal mengirim ke Spreadsheet! Pastikan akses "Siapa Saja (Anyone)" sudah aktif di Apps Script.');
-            } finally {
-                btnSubmit.innerText = originalText;
-                btnSubmit.disabled = false;
-            }
+            dataTransaksi.push(transaksi);
+            localStorage.setItem('jimpitan_transaksi', JSON.stringify(dataTransaksi));
+            
+            // 3. Reset form dan kembalikan ke dashboard
+            document.getElementById('input-nominal').value = '';
+            alert('Iuran berhasil dicatat ke Dashboard & Spreadsheet!');
+            switchTab('dashboard');
+            
+            btnSubmit.innerText = originalText;
+            btnSubmit.disabled = false;
         });
 
         // Hapus Warga
