@@ -178,6 +178,7 @@
                 // Kirim ke Google Sheets
                 await fetch(SCRIPT_URL, {
                     method: 'POST',
+                    mode: 'no-cors', // INI KODE TAMBAHANNYA
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify(payload)
                 });
